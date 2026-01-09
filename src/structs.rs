@@ -8,6 +8,7 @@ use crossterm::{
     terminal::{self, Clear, ClearType},
     QueueableCommand, 
 };
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 
 // Cursor location on screen 0 indexed
@@ -62,6 +63,56 @@ impl Editor {
 
         Ok(())
     }
+
+    fn move_cursor(&mut self, key: KeyCode) {
+        let Position { mut x, mut y } = self.cursor_position;
+
+        // Retrieve terminal size to prevent going off screen
+        let width = self.terminal.size.width as usize;
+        let height = self.terminal.size.height as usize;
+
+        // Map keys to coordinate changes
+        match key {
+            KeyCode::Up | KeyCode::Char('w') => {
+                // saturating_sub to prevent underflow
+                y = y.saturating_sub(1);
+            }
+            KeyCode::Down | KeyCode::Char('s') => {
+                if y < height - 1 {
+                    y += 1;
+                }
+            }
+            KeyCode::Left | KeyCode::Char('a') => {
+                x = x.saturating_sub(1);
+            }
+            KeyCode::Right | KeyCode::Char('d') => {
+                if x < width - 1 {
+                    x += 1;
+                }
+            }
+            _ => {}
+        }
+
+        self.cursor_position = Position { x, y };
+    }
+
+    pub fn process_keypress(&mut self, key: KeyEvent) -> Result<(), io::Error> {
+        match key.code {
+            // Quit CTRL + Q
+            KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.should_quit = true;
+            }
+            KeyCode::Up | KeyCode::Down | KeyCode:: Left | KeyCode::Right | KeyCode::Char('w') | KeyCode::Char('a') | KeyCode::Char('s') | KeyCode::Char('d') => {
+                self.move_cursor(key.code);
+            }
+            _ => {
+                // TODO: Character logic
+            }
+        }
+        Ok(())
+    }
+
+
 
     // Helper for drawing the rows
     fn draw_rows(&self, stdout: &mut io::Stdout) -> Result<(), io::Error> {

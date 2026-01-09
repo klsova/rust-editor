@@ -27,18 +27,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         editor.refresh_screen()?;
 
         if editor.should_quit {
-            break
+            break;
         }
 
-        let key_event = read_key()?;
-        match key_event.code {
-            KeyCode::Char('q') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
-                editor.should_quit = true;
-            }
-            _ => {
+        let key = read_key()?;
 
-            }
-        }
+        editor.process_keypress(key)?;
     }
 
     Ok(())
