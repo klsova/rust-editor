@@ -5,6 +5,7 @@ use structs::Editor;
 use terminal::Terminal;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers, read};
 use std::io;
+use std::env;
 
 
 use crate::structs::{Document, Position};
@@ -12,15 +13,20 @@ use crate::structs::{Document, Position};
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let terminal = Terminal::default()?;
 
+    let args: Vec<String> = env::args().collect();
+
+    let document = if args.len() > 1 {
+        Document::open(&args[1])?
+    } else {
+        Document { rows: Vec::new(), filename: None }
+    };
+
     let mut editor = Editor {
         should_quit: false,
         terminal: terminal,
         cursor_position: Position::default(),
         offset: Position::default(),
-        document: Document {
-            rows: Vec::new(),
-            filename: None
-        },
+        document: document,
     };
 
     loop {

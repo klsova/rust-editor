@@ -9,6 +9,7 @@ use crossterm::{
     QueueableCommand, 
 };
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use std::fs;
 
 
 // Cursor location on screen 0 indexed
@@ -16,6 +17,15 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 pub struct Position {
     pub x: usize,
     pub y: usize,
+}
+
+impl From<&str> for Row {
+    fn from(slice: &str) -> Self {
+        Self {
+            string_content: String::from(slice),
+            render_content: String::from(slice),
+        }
+    }
 }
 
 // Single line of text
@@ -28,6 +38,22 @@ pub struct Row {
 pub struct Document {
     pub rows: Vec<Row>,
     pub filename: Option<PathBuf>,
+}
+
+impl Document {
+    pub fn open(filename: &str) -> Result<Self, std::io::Error> {
+        let contents = fs::read_to_string(filename)?;
+
+        let rows = contents
+            .lines() // Iterator over lines that handles \n and \r\n
+            .map(|line| Row::from(line))
+            .collect();
+
+        Ok(Self {
+            rows,
+            filename: Some(PathBuf::from(filename)),
+        })
+    }
 }
 
 pub struct Editor {
@@ -114,28 +140,33 @@ impl Editor {
 
 
 
-    // Helper for drawing the rows
+    // Drawing the rows
     fn draw_rows(&self, stdout: &mut io::Stdout) -> Result<(), io::Error> {
-        // Iterate through the rows of the terminal height
-        for i in 0..self.terminal.size.height {
-
-            // Current line clear before drawing
+        let height = self.terminal.size.height;
+        
+        for terminal_row in 0..height {
+            // Clear current line
             stdout.queue(terminal::Clear(ClearType::CurrentLine))?;
+            
+            // We need to know which row of the file maps to this row of the screen.
+            let file_row = terminal_row as usize;
 
-            // If we are on a line that doesnt have any text buffer then we draw a tilde
-            if i >= self.document.rows.len() as u16 {
-                if self.document.rows.is_empty() && i == self.terminal.size.height / 3 {
-                    self.draw_welcome_message(stdout)?;
-                } else {
-                    stdout.queue(Print("~"))?;
-                }
+            if file_row < self.document.rows.len() {
+                let row = &self.document.rows[file_row];
+                
+                // If line is wider than screen, chop it off visually
+                let len = std::cmp::min(row.render_content.len(), self.terminal.size.width as usize);
+                
+                // A slice to print only what fits
+                stdout.queue(Print(&row.render_content[..len]))?;
+            } else if self.document.rows.is_empty() && terminal_row == height / 3 {
+                 self.draw_welcome_message(stdout)?;
             } else {
-                let row = &self.document.rows[i as usize];
-                stdout.queue(Print(&row.render_content))?;       
+                 stdout.queue(Print("~"))?;
             }
-
-            // Move to the next line except if its the last one
-            if i < self.terminal.size.height - 1 {
+            
+            // New line handling
+            if terminal_row < height - 1 {
                 stdout.queue(Print("\r\n"))?;
             }
         }
@@ -159,3 +190,4 @@ impl Editor {
         Ok(())
     }
 }
+
