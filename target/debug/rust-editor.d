@@ -1,0 +1,1 @@
+/home/klsova/Documents/Koodeja/rust-editor/rust-editor/target/debug/rust-editor: /home/klsova/Documents/Koodeja/rust-editor/rust-editor/src/main.rs /home/klsova/Documents/Koodeja/rust-editor/rust-editor/src/structs.rs /home/klsova/Documents/Koodeja/rust-editor/rust-editor/src/terminal.rs
