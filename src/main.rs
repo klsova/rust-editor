@@ -3,7 +3,7 @@ mod terminal;
 
 use structs::Editor;
 use terminal::Terminal;
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers, read};
+use crossterm::event::{Event, KeyEvent, read};
 use std::io;
 use std::env;
 

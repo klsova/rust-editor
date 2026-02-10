@@ -4,8 +4,8 @@ use crate::terminal::Terminal;
 use std::io::{self, stdout, Write};
 use crossterm::{
     cursor,
-    style::{self, Print},
-    terminal::{self, Clear, ClearType},
+    style::Print,
+    terminal::{self, ClearType},
     QueueableCommand, 
 };
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -128,14 +128,79 @@ impl Editor {
             KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.should_quit = true;
             }
-            KeyCode::Up | KeyCode::Down | KeyCode:: Left | KeyCode::Right | KeyCode::Char('w') | KeyCode::Char('a') | KeyCode::Char('s') | KeyCode::Char('d') => {
+            // Move cursor with arrow keys and wasd
+            KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right | KeyCode::Char('w') | KeyCode::Char('a') | KeyCode::Char('s') | KeyCode::Char('d') => {
                 self.move_cursor(key.code);
             }
-            _ => {
-                // TODO: Character logic
+            // Insert character
+            KeyCode::Char(c) => {
+                self.insert_char(c);
             }
+            // Delete character before cursor
+            KeyCode::Backspace => {
+                self.delete_char();
+            }
+            // Create new line
+            KeyCode::Enter => {
+                self.insert_newline();
+            }
+            _ => {}
         }
         Ok(())
+    }
+
+    fn insert_char(&mut self, c: char) {
+        let cursor_y = self.cursor_position.y;
+        let cursor_x = self.cursor_position.x;
+
+        // Ensure document has enough rows - create them if needed
+        while self.document.rows.len() <= cursor_y {
+            self.document.rows.push(Row::from(""));
+        }
+
+        let row = &mut self.document.rows[cursor_y];
+        if cursor_x <= row.string_content.len() {
+            row.string_content.insert(cursor_x, c);
+            row.render_content = row.string_content.clone();
+            self.cursor_position.x += 1;
+        }
+    }
+
+    fn delete_char(&mut self) {
+        let cursor_y = self.cursor_position.y;
+        let cursor_x = self.cursor_position.x;
+
+        if cursor_y < self.document.rows.len() && cursor_x > 0 {
+            let row = &mut self.document.rows[cursor_y];
+            if cursor_x <= row.string_content.len() {
+                row.string_content.remove(cursor_x - 1);
+                row.render_content = row.string_content.clone();
+                self.cursor_position.x -= 1;
+            }
+        }
+    }
+
+    fn insert_newline(&mut self) {
+        let cursor_y = self.cursor_position.y;
+        let cursor_x = self.cursor_position.x;
+
+        // Ensure the current row exists
+        while self.document.rows.len() <= cursor_y {
+            self.document.rows.push(Row::from(""));
+        }
+
+        let row = &mut self.document.rows[cursor_y];
+        // Split the current row at cursor position
+        let remaining_content = row.string_content.split_off(cursor_x);
+        row.render_content = row.string_content.clone();
+
+        // Insert new row with the remaining content
+        let new_row = Row::from(remaining_content.as_str());
+        self.document.rows.insert(cursor_y + 1, new_row);
+
+        // Move cursor to beginning of next line
+        self.cursor_position.y += 1;
+        self.cursor_position.x = 0;
     }
 
 
@@ -190,4 +255,3 @@ impl Editor {
         Ok(())
     }
 }
-
